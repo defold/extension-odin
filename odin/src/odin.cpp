@@ -318,8 +318,8 @@ static int CreateRoom(lua_State* L)
 /** Send a message.
  * @name send
  * @string data
- * @table [target_peer_ids]
- * @number [msgid]
+ * @table target_peer_ids (OPTIONAL)
+ * @number msgid (OPTIONAL)
  * @treturn boolean success
  */
 static int SendRpc(lua_State* L)
