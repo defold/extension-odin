@@ -25,10 +25,46 @@ Make sure to read the [official ODIN Voice documentation](https://docs.4players.
 
 
 ```lua
+	local ok = odin.init(function(self, event, data, msgid)
+		if event == "RoomUpdated" then
+			for i,update in ipairs(data.updates) do
+				if update.kind == "Joined" then
+					print(update.own_peer_id)
+				elseif update.kind == "PeerJoined" then
+					print(update.peer_id)
+				elseif update.kind == "PeerLeft" then
+					print(update.peer_id)
+				end
+			end
+		elseif event == "RoomStatusChanged" then
+			print(data.status)
+		elseif event == "MessageReceived" then
+			-- data received from odin.send()
+		end
+	end)
+	if not ok then
+		print("Error while initializing odin")
+		return
+	end
 
+	ok = odin.create_room(room_id, user_id, access_key)
+	if not ok then
+		print("Error when creating room")
+		return
+	end
+
+	ok = odin.send("Hello!")
+	if not ok then
+		print("Error when sending message")
+		return
+	end
+
+	ok = odin.close_room()
+	if not ok then
+		print("Error when closing room")
+		return
+	end
 ```
-
-
 
 
 ## Example

@@ -36,6 +36,11 @@ local function create_room(self)
 	client.create_room(room_id, user_id)
 end
 
+local function close_room(self)
+	log(self, "close_room")
+	client.close_room()
+end
+
 local function toggle_panel(self, instant)
 	local root = gui.get_node("root")
 	local pos = gui.get_position(root)
@@ -62,6 +67,7 @@ function init(self)
 	msg.post(".", "acquire_input_focus")
 
 	show(self, "create_room")
+	show(self, "close_room")
 
 	client.subscribe(msg.url())
 
@@ -74,7 +80,9 @@ function final(self)
 end
 
 function on_message(self, message_id, message, sender)
-	log(self, message)
+	if message_id ~= hash("rpc_response") then
+		log(self, message)
+	end
 end
 
 function on_input(self, action_id, action)
@@ -82,6 +90,9 @@ function on_input(self, action_id, action)
 
 	button(self, "create_room", action, function()
 		create_room(self)
+	end)
+	button(self, "close_room", action, function()
+		close_room(self)
 	end)
 	button(self, "hideshow", action, function()
 		toggle_panel(self, false)

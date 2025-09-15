@@ -32,6 +32,7 @@
 static void on_rpc(uint64_t room_ref, const uint8_t *bytes, uint32_t bytes_length, void *user_data);
 
 static const char* g_OdinServer;
+static const char* g_OdinAccessKey;
 static dmScript::LuaCallbackInfo* g_OdinListener;
 static MessageQueue* g_OdinMessageQueue;
 static OdinRoom *g_OdinRoom;
@@ -244,7 +245,7 @@ static int Init(lua_State* L)
     if (r != ODIN_ERROR_SUCCESS)
     {
         const char* last_error = odin_error_get_last_error();
-        dmLogError("Failed to initialize ODIN %s, %d", last_error, r);
+        dmLogError("Failed to initialize ODIN. Reason: '%s' (%d)", last_error, r);
         lua_pushboolean(L, false);
         return 1;
     }
@@ -252,7 +253,7 @@ static int Init(lua_State* L)
     if (r != ODIN_ERROR_SUCCESS)
     {
         const char* last_error = odin_error_get_last_error();
-        dmLogError("Failed to create ODIN connection pool %s %d", last_error, r);
+        dmLogError("Failed to create ODIN connection pool. Reason: '%s' (%d)", last_error, r);
         lua_pushboolean(L, false);
         return 1;
     }
@@ -261,26 +262,48 @@ static int Init(lua_State* L)
     return 1;
 }
 
-/** Create a room.
+/** Create or join a room.
  * @name create_room
- * @string access_key
- * @string payload
+ * @string room_id Id of the room to join
+ * @string user_id Id of the user
+ * @string [access_key] The access key used when generating a token for room access. Will use odin.access_key if none is provided.
  * @treturn boolean success
  */
 static int CreateRoom(lua_State* L)
 {
     DM_LUA_STACK_CHECK(L, 1);
 
-    const char* access_key = luaL_checkstring(L, 1);
-    const char* payload = luaL_checkstring(L, 2);
-    dmLogInfo("CreateRoom access key = '%s' payload = '%s'", access_key, payload);
+    if (g_OdinRoom)
+    {
+        odin_room_close(g_OdinRoom);
+        g_OdinRoom = 0;
+    }
+
+    const char* room_id = luaL_checkstring(L, 1);
+    const char* user_id = luaL_checkstring(L, 2);
+    const char* access_key = lua_isstring(L, 3) ? luaL_checkstring(L, 3) : g_OdinAccessKey;
+    // dmLogInfo("CreateRoom access key = '%s' room id = '%s' user id = '%s'", access_key, room_id, user_id);
+    
+    // create json payload
+    uint64_t time = dmTime::GetTime() / (1000*1000);
+    uint64_t exp = time + 300;
+    char payload[1024];
+    uint32_t payload_length = sizeof(payload);
+    const char* payload_fmt = "{\"rid\":\"%s\",\"uid\":\"%s\",\"nbf\":%llu,\"exp\":%llu}";
+    int ret = dmSnPrintf(payload, payload_length, payload_fmt, room_id, user_id, time, exp);
+    if (ret < 0)
+    {
+        dmLogError("Failed to create token payload from room id %s and user id %s", room_id, user_id);
+        lua_pushboolean(L, false);
+        return 1;
+    }
 
     OdinTokenGenerator *generator;
     OdinError r = odin_token_generator_create(access_key, &generator);
     if (r != ODIN_ERROR_SUCCESS)
     {
         const char* last_error = odin_error_get_last_error();
-        dmLogError("Failed to create token generator %s %d", last_error, r);
+        dmLogError("Failed to create token generator. Reason: '%s' (%d)", last_error, r);
         lua_pushboolean(L, false);
         return 1;
     }
@@ -292,7 +315,7 @@ static int CreateRoom(lua_State* L)
     {
         const char* last_error = odin_error_get_last_error();
         odin_token_generator_free(generator);
-        dmLogError("Failed to sign payload %s %d", last_error, r);
+        dmLogError("Failed to sign payload. Reason: '%s' (%d)", last_error, r);
         lua_pushboolean(L, false);
         return 1;
     }
@@ -304,7 +327,7 @@ static int CreateRoom(lua_State* L)
     if (r != ODIN_ERROR_SUCCESS)
     {
         const char* last_error = odin_error_get_last_error();
-        dmLogError("Failed to create room %s %d", last_error, r);
+        dmLogError("Failed to create room. Reason: '%s' (%d)", last_error, r);
         lua_pushboolean(L, false);
         return 1;
     }
@@ -314,17 +337,46 @@ static int CreateRoom(lua_State* L)
 }
 
 
+/** Close/leave a previously created/joined room.
+ * @name close_room
+ * @treturn boolean success
+ */
+static int CloseRoom(lua_State* L)
+{
+    DM_LUA_STACK_CHECK(L, 1);
 
-/** Send a message.
+    if (g_OdinRoom)
+    {
+        odin_room_close(g_OdinRoom);
+        g_OdinRoom = 0;
+        lua_pushboolean(L, true);
+    }
+    else
+    {
+        dmLogError("No room joined");
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+
+/** Send a message to the current room.
  * @name send
- * @string data
- * @table target_peer_ids (OPTIONAL)
- * @number msgid (OPTIONAL)
+ * @string data Data to send.
+ * @table [target_peer_ids] Optional table with peers to send message to. Nil to send to all.
+ * @number [msgid] Optional message id to identify message by. The id will be used in the response.
  * @treturn boolean success
  */
 static int SendRpc(lua_State* L)
 {
     DM_LUA_STACK_CHECK(L, 1);
+
+    if (!g_OdinRoom)
+    {
+        dmLogError("No room joined");
+        lua_pushboolean(L, false);
+        return 1;
+    }
 
     size_t data_length;
     const char* data = luaL_checklstring(L, 1, &data_length);
@@ -368,7 +420,7 @@ static int SendRpc(lua_State* L)
     if (r != ODIN_ERROR_SUCCESS)
     {
         const char* last_error = odin_error_get_last_error();
-        dmLogError("Failed to send data %s %d", last_error, r);
+        dmLogError("Failed to send data. Reason: '%s' (%d)", last_error, r);
         lua_pushboolean(L, false);
         return 1;
     }
@@ -380,6 +432,7 @@ static int SendRpc(lua_State* L)
 static const luaL_reg Module_methods[] = {
     { "init", Init },
     { "create_room", CreateRoom },
+    { "close_room", CloseRoom },
     { "send", SendRpc },
     { 0, 0 }
 };
@@ -396,6 +449,7 @@ static void LuaInit(lua_State* L)
 dmExtension::Result AppInitializeODIN(dmExtension::AppParams* params)
 {
     g_OdinServer = dmConfigFile::GetString(params->m_ConfigFile, "odin.server", "");
+    g_OdinAccessKey = dmConfigFile::GetString(params->m_ConfigFile, "odin.access_key", "");
     return dmExtension::RESULT_OK;
 }
 

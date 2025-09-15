@@ -42,6 +42,31 @@ nodes {
 }
 nodes {
   position {
+    x: 345.0
+    y: -730.0
+  }
+  type: TYPE_TEMPLATE
+  id: "close_room"
+  parent: "root"
+  inherit_alpha: true
+  template: "/example/assets/button.gui"
+}
+nodes {
+  type: TYPE_BOX
+  id: "close_room/bg"
+  parent: "close_room"
+  template_node_child: true
+}
+nodes {
+  type: TYPE_TEXT
+  text: "CLOSE ROOM"
+  id: "close_room/text"
+  parent: "close_room/bg"
+  overridden_fields: 8
+  template_node_child: true
+}
+nodes {
+  position {
     x: 320.0
     y: -682.0
   }

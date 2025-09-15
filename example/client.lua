@@ -35,17 +35,17 @@ function M.unsubscribe(url)
 end
 
 function M.create_room(room_id, user_id)
-	local time = os.time()
 	-- https://docs.4players.io/voice/introduction/access-keys#generating-access-keys
 	local access_key = "AdJBwSsjczaDmrEuJvfBXJhAQPw63aWnBRX2WWGQSHc4"
-	local payload = json.encode({
-		rid = room_id,
-		uid = user_id .. tostring(socket.gettime()),
-		exp = time + 300,	-- 5 minutes
-		nbf = time,
-	})
-	odin.create_room(access_key, payload)
+	return odin.create_room(room_id, user_id, access_key)
 end
 
+function M.close_room()
+	return odin.close_room()
+end
+
+function M.send(data)
+	return odin.send(json.encode(data))
+end
 
 return M

@@ -59,6 +59,11 @@ function on_message(self, message_id, message, sender)
 		end
 	elseif message_id == hash("RoomStatusChanged") then
 		print("RoomStatusChanged", message.status)
+		if message.status == "Closed" then
+			for player_nr,_ in pairs(self.players) do
+				delete_player(self, player_nr)
+			end
+		end
 	elseif message_id == hash("MessageReceived") then
 		-- no-op
 	end
