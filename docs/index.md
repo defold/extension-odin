@@ -7,6 +7,10 @@ brief: This manual covers how to integrate a game with the ODIN Voice SDK.
 
 ODIN is a versatile cross-platform SDK engineered to seamlessly integrate real-time voice chat into multiplayer games. This extension adds a Lua interface, enabling seamless integration of ODIN Voice into your Defold game.
 
+## Not ready for production
+
+This integration is still in development and not ready for production use.
+
 
 ## Installation
 
