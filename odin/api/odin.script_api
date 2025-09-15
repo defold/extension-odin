@@ -31,11 +31,13 @@
     parameters:
     - name: data
       type: string
+    - name: target_peer_ids
+      type: table
+      desc: (OPTIONAL)
+    - name: msgid
+      type: number
+      desc: (OPTIONAL)
     returns:
     - name: success
       type: boolean
-
-  - name: EVENT_CONNECTIONERRORRETURN
-    type: number
-    desc: EVENT_CONNECTIONERRORRETURN
 
