@@ -1,0 +1,9 @@
+name: "ODIN"
+
+platforms:
+    osx:
+        context:
+            frameworks: ["Security"]
+    ios:
+        context:
+            frameworks: ["Security"]

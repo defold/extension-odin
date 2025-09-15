@@ -1,0 +1,89 @@
+local prettify = require("example.utils.prettify")
+local button = require("example.utils.button")
+local client = require("example.client")
+
+local function hide(self, ...)
+	local ids = {...}
+	for _,id in ipairs(ids) do
+		gui.set_enabled(gui.get_node(id .. "/bg"), false)
+	end
+end
+
+local function show(self, ...)
+	local ids = {...}
+	for _,id in ipairs(ids) do
+		gui.set_enabled(gui.get_node(id .. "/bg"), true)
+	end
+end
+
+local function log(self, value)
+	local text = prettify(value)
+	--print(text)
+	for line in text:gmatch("[^\r\n]+") do
+		self.log[#self.log + 1] = line
+	end
+	while #self.log > 35 do
+		table.remove(self.log, 1)
+	end
+	text = table.concat(self.log, "\n")
+	gui.set_text(gui.get_node("log_text"), text)
+end
+
+local function create_room(self)
+	log(self, "create_room")
+	local room_id = "myroom"
+	local user_id = "myuser"
+	client.create_room(room_id, user_id)
+end
+
+local function toggle_panel(self, instant)
+	local root = gui.get_node("root")
+	local pos = gui.get_position(root)
+	if pos.y == 0 then
+		pos.y = self.panel_position.y
+		gui.play_flipbook(gui.get_node("hideshow/icon"), "grey_arrowDownGrey")
+	else
+		pos.y = 0
+		gui.play_flipbook(gui.get_node("hideshow/icon"), "grey_arrowUpGrey")
+	end
+	if instant then
+		gui.set_position(root, pos)
+	else
+		gui.animate(root, "position", pos, gui.EASING_OUTQUAD, 0.4, 0)
+	end
+end
+
+function init(self)
+	self.log = {}
+	if not odin then
+		log(self, "ODIN is not available")
+		return
+	end
+	msg.post(".", "acquire_input_focus")
+
+	show(self, "create_room")
+
+	client.subscribe(msg.url())
+
+	self.panel_position = gui.get_position(gui.get_node("root"))
+	toggle_panel(self, true)
+end
+
+function final(self)
+	client.unsubscribe(msg.url())
+end
+
+function on_message(self, message_id, message, sender)
+	log(self, message)
+end
+
+function on_input(self, action_id, action)
+	if not action.x then return end
+
+	button(self, "create_room", action, function()
+		create_room(self)
+	end)
+	button(self, "hideshow", action, function()
+		toggle_panel(self, false)
+	end)
+end

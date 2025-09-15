@@ -1,0 +1,65 @@
+local client = require("example.client")
+
+local function spawn_player(self, player_nr)
+	if self.players[player_nr] then
+		return
+	end
+	local properties = {
+		[hash("/player")] = {
+			local_player = self.local_player_nr == player_nr,
+			player_nr = player_nr,
+		}
+	}
+	local ids = collectionfactory.create("#playerfactory", vmath.vector3(0), nil, properties)
+	local player = {
+		player_nr = player_nr,
+		ids = ids,
+		id = ids[hash("/player")],
+	}
+	self.players[player_nr] = player
+end
+
+local function delete_player(self, player_nr)
+	local player = self.players[player_nr]
+	if player then
+		go.delete(player.id, true)
+		self.players[player_nr] = nil
+	end
+end
+
+function init(self)
+	math.randomseed(os.time())
+
+	self.local_player_nr = nil
+	self.players = {}
+	
+	client.init()
+	client.subscribe(msg.url())
+end
+
+function final(self)
+	client.unsubscribe(msg.url())
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash("RoomUpdated") then
+		for i,update in ipairs(message.updates) do
+			print("RoomUpdated", update.kind)
+			if update.kind == "Joined" then
+				self.local_player_nr = update.own_peer_id
+				spawn_player(self, self.local_player_nr)
+				for _,peer in ipairs(update.room.peers) do
+					spawn_player(self, peer.id)
+				end
+			elseif update.kind == "PeerJoined" then
+				spawn_player(self, update.peer.id)
+			elseif update.kind == "PeerLeft" then
+				delete_player(self, update.peer_id)
+			end
+		end
+	elseif message_id == hash("RoomStatusChanged") then
+		print("RoomStatusChanged", message.status)
+	elseif message_id == hash("MessageReceived") then
+		-- no-op
+	end
+end

@@ -1,0 +1,41 @@
+- name: odin
+  type: table
+  desc: Functions and constants for interacting with ODIN Voice
+
+  members:
+  - name: init
+    type: function
+    desc: Initialize ODIN Voice 
+    parameters:
+    - name: listener
+      type: function
+    returns:
+    - name: success
+      type: boolean
+
+  - name: create_room
+    type: function
+    desc: Create a room. 
+    parameters:
+    - name: access_key
+      type: string
+    - name: payload
+      type: string
+    returns:
+    - name: success
+      type: boolean
+
+  - name: send
+    type: function
+    desc: Send a message. 
+    parameters:
+    - name: data
+      type: string
+    returns:
+    - name: success
+      type: boolean
+
+  - name: EVENT_CONNECTIONERRORRETURN
+    type: number
+    desc: EVENT_CONNECTIONERRORRETURN
+
