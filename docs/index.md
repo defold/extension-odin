@@ -19,8 +19,6 @@ Select `Project->Fetch Libraries` once you have added the version to `game.proje
 
 ## Usage
 
-...
-
 Make sure to read the [official ODIN Voice documentation](https://docs.4players.io/) to learn how ODIN Voice can be used to create multiplayer games.
 
 
